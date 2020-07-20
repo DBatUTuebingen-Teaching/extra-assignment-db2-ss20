@@ -1,0 +1,136 @@
+<meta charset="utf-8">
+
+(#) Query Optimization [4 + 3 = 7 Points]
+
+(##) Cost Estimation of `Scan` Operators [1 + 1 + 1 + 1 = 4 Points]
+
+Let us study the following SQL query _Q1_ over an instance of the TPC-H benchmark
+(if you want to play along: we have provided directory `TPC-H/` which
+contains everything to set up a TPC-H instance with scale factor _SF_ =
+0.01 — you already know this instance from the lecture, Chapter 14):
+
+~~~sql
+-- Query Q1
+SELECT o.o_clerk
+FROM   orders AS o
+WHERE  o.o_orderkey < 10000;
+~~~
+
+Table `orders` has a clustered primary key index `orders_pkey` defined
+on column `o_orderkey`. The following cost model parameters are known
+from PostgreSQL's configuration files and catalog tables:
+
+| Cost Model Parameter         | Value        |
+| ---------------------------- | -----------: |
+| **Default Parameters**       |              |
+| `seq_page_cost`              | `1.0`        |
+| `random_page_cost`           | `4.0`        |
+| `cpu_tuple_cost`             | `0.01`       |
+| `cpu_index_tuple_cost`       | `0.005`      |
+| `cpu_operator_cost`          | `0.0025`     |
+| **Table `orders`**           |              |
+| `#rows(orders)`              | `15000`      |
+| `#pages(orders)`             | `261`        |
+| **Index `orders_pkey`**      |              |
+| `h(orders_pkey)`             | `1`          |
+| `#rows(orders_pkey)`         | `15000`      |
+| `#pages(orders_pkey)`        | `43`         |
+| `corr(orders_pkey)`          | `1.0`        |
+| **Selectivities**            |              |
+| `sel(o_orderkey > 10000)`    | `0.83313`    |
+| `sel(o_orderkey < 10000)`    | `0.16680`    |
+
+**YOUR TASKS:**
+
+**Add all answers to one plain-text file `solutions.txt` and hand in that file.  
+Clearly identify the Tasks 1 to 6 in that file.  Make sure that we can follow 
+exactly how you derived cost estimates or developed cost formulae.**
+
+1.  Calculate the *estimated cost* (`startup_cost` and `total_cost`) for the following two
+    query plans, based on the cost model parameters given above.  Compare your results and identify
+    the better plan.
+
+    ~~~none
+                    QUERY PLAN 1                    |                      QUERY PLAN 2
+    ------------------------------------------      |      ------------------------------------------
+     Seq Scan on orders o                           |       Index Scan using orders_pkey on orders o
+       Output: o_clerk                              |         Output: o_clerk
+       Filter: (o.o_orderkey < 10000)               |         Index Cond: (o.o_orderkey < 10000)
+    ~~~
+
+2.  Cost estimation strongly depends on the selectivity of the filter predicate `sel(o_orderkey < 10000)`.
+    If we evaluate _Q1_ with a different predicate, the system's preference for `Seq Scan` or
+    `Index Scan` may change.  Re-calculate the *estimated cost* for _Q1_ with the modified
+    predicate `o.o_orderkey > 10000` (note: `>` instead of `<`) and identify the better plan.
+
+    ~~~none
+                    QUERY PLAN 3                    |                      QUERY PLAN 4
+    ------------------------------------------      |      ------------------------------------------
+     Seq Scan on orders o                           |       Index Scan using orders_pkey on orders o
+       Output: o_clerk                              |         Output: o_clerk
+       Filter: (o.o_orderkey > 10000)               |         Index Cond: (o.o_orderkey > 10000)
+    ~~~
+
+3.  Generalization: Assume query _Q1_ uses an index-supported predicate _p_ on column `o_orderkey`.
+    Cost model parameters remain as given above.
+
+      - What is the _maximum selectivity_ _s_ = `sel`(_p_`)` for which the _estimated cost_ of
+        plan operator `Index Scan` does
+        not exceed the _estimated cost_ of `Seq Scan`?
+      - What is the _cardinality_ _c_ (_i.e._, number of output rows) of _Q1_ for this
+        selectivity _s_?
+
+4.  Cost model parameter change: Now assume that the system that hosts the TPC-H instance
+    is exclusively equipped with solid-state drives (SSDs) instead of mechanical HDDs.
+
+      - Which cost model parameter would you change (and how)? Explain briefly.
+      - Repeat your computation of Task 3 with this new parameter setting.  What
+        are the new values of selectivity _s_ and cardinality _c_? Is that change
+        reasonable?  Explain briefly.
+
+---
+
+(##) Cost Estimation of `Nested Loop` Joins [2 + 1 = 3 Points]
+
+Let us now turn to the following PostgreSQL query plan (created with `EXPLAIN (VERBOSE)`).
+The plan refers to tables `one(a,b,c)` and `many(a,b,c)` as they are created and populated by the provided
+SQL file `optimization.sql`.
+
+~~~none
+                                QUERY PLAN 5
+---------------------------------------------------------------------------
+ Nested Loop  (cost=???..??? rows=#rows(out) width=4)
+   Output: (m.c - o.c)
+   Join Filter: (m.c > o.c)
+   ->  Seq Scan on public.one o  (cost=startup_cost(outer)..total_cost(outer) rows=#rows(outer) width=4)
+         Output: o.a, o.b, o.c
+   ->  Seq Scan on public.many m  (cost=startup_cost(inner)..total_cost(inner) rows=#rows(inner) width=4)
+         Output: m.a, m.b, m.c
+~~~
+
+To fill in the missing cost estimates `???..???` above, we need a cost model
+for `Nested Loop` Joins.
+
+5.  Propose cost estimation formulae that derive `startup_cost` and
+    `total_cost` for simple `Nested Loop` Joins (NLJ) and hand in your
+    formulae. Stick to the formula notation used in the lectures on
+    slide 22 of Chapter 14 (Query Optimization). Your formulae have to
+    take into account
+      - the estimated cost of the two joined inputs (_outer_ and _inner_),
+      - the evaluation of the `Join Filter` predicate (_pred_) and
+      - the evaluation of the `Output` expression (_expr_).
+
+6.  Compare your results with PostgreSQL's built-in cost estimation for `Nested Loop` Joins:
+      - Construct a SQL query _Q2_ on tables `one` and `many` which
+        results in a query plan _P_ matching `QUERY PLAN 5` above.
+        **Note:** You may have to set `enable_material=off` or change other configuration parameters
+                  to enforce such a plan.
+        Hand in your query _Q2_ and the resulting plan _P_.
+
+      - Based on the numbers given in plan _P_, calculate the _estimated costs_ according to your
+        formula developed in Task 5.  Compare your results with the cost estimated by PostgreSQL and
+        discuss briefly.
+
+
+
+<!-- Markdeep: --><style class="fallback">body{visibility:hidden;white-space:pre;font-family:monospace}</style><script src="../markdeep.min.js"></script><script>window.alreadyProcessedMarkdeep||(document.body.style.visibility="visible")</script>

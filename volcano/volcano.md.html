@@ -1,0 +1,116 @@
+<meta charset="utf-8">
+
+(#) The Volcano Iterator Model [3 + 1 + 3 = 7 Points]
+
+The _Volcano iterator model_ is a strategy to evaluate plan operators
+in an on-demand fashion.  We can use SQL's _cursors_ to observe the
+effects of this evaluation strategy at the SQL console.
+
+To set the scene for this assignment, use the DDL and DML statements in
+the provided file `volcano.sql` to create, populate, and analyze the
+(by now well-known) tables `one(a,b,c)` and `many(a,b,c)` inside a
+PostgreSQL database.
+
+**YOUR TASKS:**
+
+**Add all answers to one plain-text file `solutions.txt`  and hand in that file.  
+Clearly identify the Tasks 1 to 3 in that file.**
+
+1. Define SQL cursors over the results of the queries _Q1_ to _Q3_
+   below. When you retrieve individual rows of these results via `FETCH`
+   you will notice that these `FETCH` operations take different
+   execution times to complete.  (Repeat each of the three experiments a
+   few times until you are confident that you indeed observe recurring
+   timing patterns. Once your recognize a pattern, there is no need to
+   fetch further rows.) **For each of _Q1_ to _Q3_, report the observed
+   `FETCH` times and briefly (but crisply) explain these timings
+   based on the Volcano-style implementation of the queries' plan
+   operators.**
+
+   Use the following template for your timing experiments:
+
+  ~~~sql
+  -- Inspect plan operators for query
+  EXPLAIN (VERBOSE, COSTS false)
+    ‹query›;
+
+  -- Cursors need a transaction context
+  BEGIN;
+
+  -- Declare SQL cursor for query result
+  DECLARE pipeline SCROLL CURSOR FOR
+    ‹query›;
+
+  -- Fetch first rows of query result, row by row
+  FETCH NEXT pipeline;    -- observe execution time for this FETCH
+  FETCH NEXT pipeline;    -- observe execution time
+    ⋮
+    ‹repeat as needed›
+    ⋮
+  FETCH NEXT pipeline;    -- observe execution time
+
+  -- Release cursor, close transaction
+  CLOSE pipeline;
+  COMMIT;
+  ~~~
+
+  SQL query _Q1_ (note that variable `:MANY` reflects the cardinality of the
+  `many` table):
+
+  ~~~sql
+  -- Query Q1
+  SELECT m.*
+  FROM   many AS m
+  OFFSET :MANY - 10;
+  ~~~
+
+  SQL query _Q2_:
+
+  ~~~sql
+  -- Query Q2
+  SELECT o.a, m.*
+  FROM   generate_series(2,4) AS o(a),
+         LATERAL (SELECT m.*
+                  FROM   many AS m
+                  OFFSET :MANY - o.a) AS m;
+  ~~~
+
+  SQL query _Q3_:
+
+  ~~~sql
+  -- Query Q3
+  SELECT m.c, SUM(m.a) AS agg
+  FROM   many AS m
+  GROUP BY m.c;
+  ~~~
+
+---
+
+2. How can you tell _only from looking at the `EXPLAIN (VERBOSE,
+   ANALYZE)` output_ for the two equivalent queries _Q4_ and _Q5_ below
+   that PostgreSQL evaluates `EXISTS (`_Q_`)` using a _shortcut_
+   (_i.e._, as soon as it is known that query _Q_ delivers a non-empty result,
+   evaluation of `EXISTS` stops).  Point to those specific parts of the
+   `EXPLAIN` outputs that give PostgreSQL's implementation strategy away
+   (it may be helpful to contrast the two `EXPLAIN` outputs for _Q4_ and _Q5_).
+
+   ~~~sql
+   -- Query Q4
+   SELECT EXISTS(TABLE many);
+
+   -- Query Q5
+   SELECT (SELECT COUNT(*) FROM many) > 0;
+   ~~~
+
+---
+
+3. Provide pseudo-code (see Chapter 13, slides 13+14) for the three
+   Volcano API methods `open`, `next`, `close` for each of the two plan operators
+   below:
+
+   - `Materialize(`_p_`)`: materializes result of plan _p_ in an in-memory buffer,
+     then delivers rows from that buffer.
+   - `Offset(`_n_`,`_p_`)`: delivers rows at offsets _n_, _n_+1, _n_+2, ...
+       of the result of plan _p_.
+
+<!-- Markdeep: --><style class="fallback">body{visibility:hidden;white-space:pre;font-family:monospace}</style><script src="../markdeep.min.js"></script><script>window.alreadyProcessedMarkdeep||(document.body.style.visibility="visible")</script>

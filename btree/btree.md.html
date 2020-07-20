@@ -1,0 +1,104 @@
+<meta charset="utf-8">
+
+(#) Multi-Column B⁺Tree-Indices &nbsp;&nbsp; [1 + 1.5 + 0.5 + 0.5 + 1 + 1 + 2 + 0.5 = 8 Points]
+
+This assignment is all about B⁺Trees over _multiple columns_ (_i.e._, index keys
+are _composite_ or _concatenated_).  We specifically use two-column keys of
+integers.  An example of such a B⁺Tree _T_ with _order_ _o_ = 2 is given in
+Figure [initial] below.
+
+**YOUR TASKS:**
+
+1. **Insert** the key values `(8,8)` and `(85,54)` (in that order) into _T_.
+   We assume that the insert operation does **not use redistribution**.
+
+   Hand in one sketch of the B⁺Tree that results after both inserts have
+   been performed. Add your sketch to the provided file
+   `btree-sketches.md.html` which will render your character-based
+   drawings nicely if viewed in a web browser (we have provided the
+   initial tree _T_ in that file as a template that you can copy, paste,
+   and then modify.)
+
+2. **Delete** the key values `(91,61)`, `(10,10)`, `(14,16)` (in that order)
+   from the tree that resulted from Task 1.  We assume that the delete
+   operations **use merging and redistribution on all tree levels**.
+
+   Add to file `btree-sketches.md.html` one sketch of the B⁺Tree that
+   results after all three deletes have been performed.
+
+
+************************************************************************************************
+*                            ⟦(10,10)‖(42,45)‖(91,61)‖   ⟧₀                                    *
+*                           /        |       |        \                                        *
+*                          /         |       |         \                                       *
+*                         /          |       |          \                                      *
+*                        |           |       |           |                                     *
+*                        v           |       |           v                                     *
+*[(1,1)‖(2,3)‖(3,5)‖(4,7)⟧₁          |       |           [(91,61)‖(92,62)‖(95,65)‖(97,68)⟧₄    *
+*                                    v       v                                                 *
+*            [(10,10)‖(14,16)‖   ‖   ⟧₂      [(42,45)‖(43,41)‖(80,53)‖(90,55)⟧₃                *
+************************************************************************************************
+[Figure [initial]: Initial B⁺Tree _T_ of order _o_ = 2.]
+
+---
+
+Use the provided SQL file `btree.sql` to create table
+`playground(x,y)` in a PostgreSQL database.   Columns `x` (unique) and `y` (with
+duplicates) both hold 8-byte integer values.  The SQL file populates
+the table with 10^6 rows and finally creates a multi-column B⁺Tree index
+`playground_x_y` using composite `(x,y)` keys.
+
+**Note the following:**
+
+- We assume PostgreSQL version&nbsp;12, just like in the lecture.
+- The following tasks make use of the PostgreSQL `pageinspect` extension.
+  Let us remind you of the following functions in that extension.  You will
+  find sample uses of these in file `btree-indexes.sql` that we have distributed
+  with the material of Chapter&nbsp;9 of the lecture:
+  - `bt_metap(`_‹index name›_`)`,
+  - `bt_page_stats(`_‹index name›_`,`_‹page number›_`)`,
+  - `bt_page_items(`_‹index name›_`,`_‹page number›_`)`.
+- PostgreSQL's catalog table `pg_class` may also prove helpful (again,
+  see `btree-indexes.sql` of Chapter 9).
+
+
+**YOUR TASKS:**
+
+3. Construct a SQL query that computes the _height h_ of the B⁺Tree `playground_x_y`.
+
+4. Construct a SQL query that computes _#pages_(`playground_x_y`), the _number of
+   pages_ occupied by index `playground_x_y`.
+
+5. Construct a SQL query that computes the _average fanout_ of all non-leaf
+   nodes of index `playground_x_y`.
+
+6. Construct a SQL query that computes the _average occupancy_ (_i.e._,
+   % of page space used) of all leaf nodes of index `playground_x_y`.
+
+**The above SQL queries all return single-row, single-column results.  Hand in
+these four SQL queries (not their results) in a file `solutions.sql`.**
+
+7. Some B⁺Tree implementations perform _suffix truncation_ if the index keys
+   contain multiple columns: trailing columns of the index
+   keys are not stored in the index entries provided that
+   B⁺Tree search continues to work as required.
+
+   - What is the benefit of such key suffix truncation?  Explain briefly.
+   - Use index `playground_x_y` to find out whether PostgreSQL v12 implements
+     such suffix truncation in
+         - non-leaf index nodes, and/or
+         - leaf index nodes.
+
+**For each of the two index node kinds, add a SQL query to
+`solutions.sql` whose result clearly demonstrates whether/how
+PostgreSQL's B⁺Trees handle suffix truncation.  Provide a brief
+explanation of how to interpret the two query outputs.** You may find
+the auxiliary function `data_to_numeric` in SQL file `btree.sql`
+helpful in this context.
+
+8. Add a copy of the sketch of the initial B⁺Tree _T_ of Figure [initial]
+   to file `btree-sketches.md.html` and modify its key entries such that
+   your sketch properly reflects PostgreSQL's treatment of key suffix truncation.
+
+
+<!-- Markdeep: --><style class="fallback">body{visibility:hidden;white-space:pre;font-family:monospace}</style><script src="../markdeep.min.js"></script><script>window.alreadyProcessedMarkdeep||(document.body.style.visibility="visible")</script>

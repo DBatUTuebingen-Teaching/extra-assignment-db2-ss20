@@ -1,0 +1,83 @@
+<meta charset="utf-8">
+
+(#) MonetDB and MAL [4 + 4 = 8 Points]
+
+Use the DDL and DML statements in the provided file `mal.sql` to set up
+two tables `master(a,b,c)` and `detail(a,b,c)` inside a MonetDB
+database.  (You will find that these tables are in a simple 1:10
+relationship.)
+
+The SQL query _Q1_ below refers to both tables:
+
+~~~sql
+-- Query Q1
+SELECT m.*
+FROM   master AS m
+WHERE  EXISTS (SELECT 1
+               FROM   detail AS d
+               WHERE  m.c = d.c
+               AND    d.b >= 'a');
+~~~
+
+**YOUR TASKS:**
+
+**Add all answers to one plain-text file `solutions.txt`  and hand in that file.  
+Clearly identify the individual tasks in that file.**  Make sure that only a single 
+`mclient` is connected to the MonetDB database while you perform these tasks.
+
+
+1. Use `EXPLAIN` on _Q1_ and inspect the resulting MAL program.
+
+   - Provide
+     _detailed comments for each line_ in the MAL program and briefly explain
+     the _role of all BAT variables_ the program assigns to.  (You neither need
+     to consider the initial commands leading up to the call to `sql.mvc()`
+     nor the trailing `bat.append` and `language.pass` statements that
+     lead up to the final `sql.resultSet` call.)
+   - In particular, explain what the two following MAL operations compute and what
+     role they play in the program for _Q1_:
+     - `bat.mirror(`_b_`)`,
+     - `algebra.intersect(`_b1_`,`_b2_`,nil:BAT,false,nil:lng)` &nbsp;&nbsp; (you may consider the
+       last three arguments fixed).
+   - Does MonetDB use _shortcut_ to implement SQL's `EXISTS` (see Task 2 of the
+     assignment on the Volcano iterator model)?  Explain briefly.
+
+
+SQL query _Q2_ refers to table `detail` only:
+
+~~~sql
+-- Query Q2
+SELECT d.b AS b, d.a * 2 + d.a * 2 AS plus
+FROM   detail AS d
+WHERE  d.a * 2 > 15;
+~~~
+
+**YOUR TASKS:**
+
+2. Use `EXPLAIN` on _Q2_ and inspect the resulting MAL program.
+
+   - Find out whether MonetDB implements _common subexpression elimination_
+     (CSE), _i.e._, are repeated subexpressions like `d.a * 2` only
+     evaluated once?  Briefly explain your findings.
+   - Does MonetDB implement CSE across the `SELECT` and `WHERE` clauses?
+   - If not, provide an improved MAL program that implements query _Q2_
+     and computes the subexpression `d.a * 2` only _once_.
+
+     To do that, complete the MAL program stub below and hand in the
+     completed program.  If your program assigns to BAT variables,
+     _always_ provide explicit type signatures as in `t:bat[:int] :=
+     ‹MAL expression›;`.  **NB:** Before you hand in your MAL code, make
+     sure that you have produced a program that indeed runs without
+     error in an `mclient -l msql` session.
+
+     ~~~plain
+     # implements SQL query Q2 (using full CSE)
+     sql := sql.mvc();
+
+     ‹your MAL program here›
+
+     io.print(‹BAT to represent result column b›, ‹BAT to represent result column plus›);
+     ~~~
+
+
+<!-- Markdeep: --><style class="fallback">body{visibility:hidden;white-space:pre;font-family:monospace}</style><script src="../markdeep.min.js"></script><script>window.alreadyProcessedMarkdeep||(document.body.style.visibility="visible")</script>
